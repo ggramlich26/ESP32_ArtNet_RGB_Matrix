@@ -75,6 +75,7 @@ public:
 	void printPacketHeader(void);
 	void printPacketContent(void);
 	int sendArtPollReply();
+	int sendArtPollReply(uint16_t universe, char *shortName, char *longName);
 
 	// Flush the UDP buffer
 	inline void flushBuffer(void)
@@ -142,6 +143,7 @@ public:
 private:
 	uint16_t makePacket(void);
 	uint16_t makeArtPollReplyPacket(void);
+	uint16_t makeArtPollReplyPacket(uint16_t universe, char *shortname, char *longName);
 
 	WiFiUDP Udp;
 	String host;

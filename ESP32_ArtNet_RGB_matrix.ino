@@ -66,7 +66,15 @@ void loop()
 		uint16_t opCode;
 		opCode = artnet.read();
 		if(opCode == ART_POLL){
-			artnet.sendArtPollReply();
+			for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
+				if(ledOutputs[i].config.numberLEDs > 0){
+					uint16_t endUniverse = ledOutputs[i].config.startUniverse + (ledOutputs[i].config.startDmxAddress +
+							ledOutputs[i].config.numberLEDs*3)/512;
+					for(int j = ledOutputs[i].config.startUniverse; j <= endUniverse; j++){
+						artnet.sendArtPollReply(j, ledOutputs[i].config.shortName, ledOutputs[i].config.longName);
+					}
+				}
+			}
 		}
 	}
 

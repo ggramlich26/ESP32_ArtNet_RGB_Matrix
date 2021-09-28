@@ -158,6 +158,7 @@ String handle_internet_settings_request(AsyncWebServerRequest *request){
 	String new_ssid;
 	String new_password;
 	String new_host_name;
+	String newMode;
 	bool update = false;
 	// GET newnew  SSID value on <ESP_IP>/get?input_ssid=<inputMessage>
 	if (request->hasParam(SSID_INPUT)) {
@@ -185,7 +186,7 @@ String handle_internet_settings_request(AsyncWebServerRequest *request){
 
 String handle_led_settings_request(AsyncWebServerRequest *request){
 	if(!request->hasParam(LED_OUTPUT_INPUT) || request->getParam(LED_OUTPUT_INPUT)->value().equals(""))
-		return "Please enter an output to update from 0 to " + String(NUMBER_LED_OUTPUTS);
+		return "Please enter an output to update from 0 to " + String(NUMBER_LED_OUTPUTS-1);
 	int output = atoi(request->getParam(LED_OUTPUT_INPUT)->value().c_str());
 	String reply = "";
 	if(request->hasParam(ARTNET_UNIVERSE_INPUT)){

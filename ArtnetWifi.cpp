@@ -108,25 +108,27 @@ uint16_t ArtnetWifi::makePacket(void)
 	return len;
 }
 
-uint16_t ArtnetWifi::makeArtPollReplyPacket(void){
+uint16_t ArtnetWifi::makeArtPollReplyPacket(){
+	return makeArtPollReplyPacket(0, "", "");
+}
+
+uint16_t ArtnetWifi::makeArtPollReplyPacket(uint16_t universe, char *shortName, char *longName){
 
 	uint32_t ipAddress = WiFi.localIP();
 	uint16_t portNumber = 0x1936;
 	uint16_t versInfo = 1;
-	uint16_t netSwitch = 0;	//todo
+	uint16_t netSwitch = (universe&0x7F00) | ((universe>>4)&0x000F);
 	uint16_t oem = 0x6362;
 	uint8_t ubeaVersion = 0;
 	uint8_t status1 = 0b00010000;
 	uint16_t estaMan = 0x00;
-	char shortName[18] = "Light Tube";//todo right pad with zeros
-	char longName[64]; //todo
-	char nodeReport[64]; //todo
-	uint16_t numPorts = 0;
-	uint32_t portTypes = 0x00000000;
-	uint32_t goodInput = 0x08080808;
-	uint32_t goodOutput = 0x00000000;
-	uint32_t swIn = 0x00000000; //todo: possibly adapt
-	uint32_t swOut = 0x00000000; //todo: possibly adapt
+	char nodeReport[64] = "";
+	uint16_t numPorts = 1;
+	uint32_t portTypes = 0x80000000;
+	uint32_t goodInput = 0x00000000;
+	uint32_t goodOutput = 0x80000000;
+	uint32_t swIn = 0x00000000;
+	uint32_t swOut = (((uint32_t)universe)<<24)&0x0F000000;
 	uint8_t swVideo = 0;
 	uint8_t swMacro = 0;
 	uint8_t swRemote = 0;
@@ -208,6 +210,16 @@ int ArtnetWifi::sendArtPollReply(){
 	uint16_t len;
 
 	len = makeArtPollReplyPacket();
+	Udp.beginPacket(artPollHost.c_str(), ART_NET_PORT);
+	Udp.write(artnetPacket, ART_DMX_START + len);
+
+	return Udp.endPacket();
+}
+
+int ArtnetWifi::sendArtPollReply(uint16_t universe, char *shortName, char *longName){
+	uint16_t len;
+
+	len = makeArtPollReplyPacket(universe, shortName, longName);
 	Udp.beginPacket(artPollHost.c_str(), ART_NET_PORT);
 	Udp.write(artnetPacket, ART_DMX_START + len);
 

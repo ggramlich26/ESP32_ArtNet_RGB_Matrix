@@ -11,7 +11,8 @@
 #include "Arduino.h"
 #include "ledOutput.h"
 
-enum internetMode{wifiDHCP, ethernetDHCP, wifiStatic, ethernetStatic, accesspoint};
+//enum internetMode{wifiDHCP, ethernetDHCP, wifiStatic, ethernetStatic, accesspoint};
+enum internetMode{wifiDHCP, accesspoint};
 
 #define WIFI_CONNECT_INTERVAL					10000	//interval in which the device tries to connect to wifi
 #define DEFAULT_INTERT_MODE						wifiDHCP
