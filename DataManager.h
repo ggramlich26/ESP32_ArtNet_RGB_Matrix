@@ -37,6 +37,7 @@ public:
 
 	static bool getWifiConnected();
 	static bool getScheduleRestart();
+	static ledConfig_t* getLedConfig(int output);
 
 	static String setWIFICredentials(const char* newSSID, const char* newPassword, const char* newHostName);
 

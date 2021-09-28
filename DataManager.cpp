@@ -355,3 +355,13 @@ String DataManager::setLongName(int output, String name){
 			true);
 	return "Successfully updated long Name";
 }
+
+ledConfig_t* DataManager::getLedConfig(int output){
+	if(output < 0)
+		output = 0;
+	if(output >= NUMBER_LED_OUTPUTS)
+		output = NUMBER_LED_OUTPUTS - 1;
+	return &((ledOutputs+output)->config);
+}
+
+

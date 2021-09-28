@@ -13,8 +13,8 @@
 #define WS2812B_PINS	[4,5,6,7]
 
 //WIFI settings
-#define DEFAULT_SSID		"Hulapalu"
-#define DEFAULT_WIFI_PW		"thebestAK13top"
+#define DEFAULT_SSID		"Zeus Lighting"
+#define DEFAULT_WIFI_PW		"BeautyOfLight"
 #define DEFAULT_HOST_NAME	"Light Tube"
 
 #define MAX_LEDS_PER_OUTPUT	240

@@ -19,6 +19,7 @@
 
 String handle_internet_settings_request(AsyncWebServerRequest *request);
 String handle_led_settings_request(AsyncWebServerRequest *request);
+String create_config_html();
 
 AsyncWebServer server(80);
 
@@ -48,6 +49,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 </head>
 
 <body>
+	<a href="/config">Show configuration</a>
 	<form action="/get" autocomplete="off">
 		<p style="font-size:35px">
 			<label for="input_led_output">LED output to update: &nbsp </label>
@@ -123,6 +125,9 @@ void webserver_init(){
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send_P(200, "text/html", index_html);
 	});
+	server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send(200, "text/html", create_config_html());
+	});
 
 	server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
 		String reply = handle_internet_settings_request(request);
@@ -158,8 +163,9 @@ String handle_internet_settings_request(AsyncWebServerRequest *request){
 	String new_ssid;
 	String new_password;
 	String new_host_name;
-	String newMode;
+	internetMode newMode;
 	bool update = false;
+	bool updateMode = false;
 	// GET newnew  SSID value on <ESP_IP>/get?input_ssid=<inputMessage>
 	if (request->hasParam(SSID_INPUT)) {
 		new_ssid = request->getParam(SSID_INPUT)->value();
@@ -174,6 +180,27 @@ String handle_internet_settings_request(AsyncWebServerRequest *request){
 	if (request->hasParam(HOST_NAME_INPUT)) {
 		new_host_name = request->getParam(HOST_NAME_INPUT)->value();
 		update = true;
+	}
+//			<input style="font-size:35px" name="input_internet_mode_wifi_dhcp" type="radio">
+//			<label for="input_internet_mode_wifi_dhcp">WiFi DHCP &nbsp </label>
+//			<input style="font-size:35px" name="input_internet_mode_ethernet_dhcp" type="radio">
+//			<label for="input_internet_mode_ethernet_dhcp">Ethernet DHCP &nbsp </label>
+//			<input style="font-size:35px" name="input_internet_mode_access_point" type="radio">
+//			<label for="input_internet_mode_access_point">Access point &nbsp </label>
+	if(request->hasParam("input_internet_mode_wifi_dhcp")){
+		newMode = wifiDHCP;
+		updateMode = true;
+	}
+	if(request->hasParam("input_internet_mode_ethernet_dhcp")){
+		updateMode = true;
+		return "Ethernet is currently not supported. Please select a different internet mode.";
+	}
+	if(request->hasParam("input_internet_mode_access_point")){
+		newMode = accesspoint;
+		updateMode = true;
+	}
+	if(updateMode){
+		DataManager::setInetMode(newMode);
 	}
 	if(update){
 		return DataManager::setWIFICredentials((new_ssid != NULL?new_ssid.c_str():""),
@@ -223,5 +250,36 @@ String handle_led_settings_request(AsyncWebServerRequest *request){
 		}
 	}
 	return reply;
+}
+
+String create_config_html(){
+	String html = String("<!DOCTYPE html> <html> <head> "
+			"<style> "
+			"table { font-family: arial, sans-serif; border-collapse: collapse; width: 100%; } "
+			"td, th { border: 1px solid #dddddd; text-align: left; padding: 8px; } tr:nth-child(even) "
+			"{ background-color: #dddddd; } "
+			"</style> "
+			"</head> "
+			"<body> "
+			"<h2>LED controller configuration</h2> "
+			"<table> "
+			"<tr> <th>Output</th> <th>ArtNet universe</th> <th>DMX address</th> "
+			"<th>Number LEDs</th> <th>Short descriptor</th> <th>Long descriptor</th> </tr> ");
+
+	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
+		html += "<tr> "
+				"<td> " + String(i) + "</td> " +
+				"<td> " + String(DataManager::getLedConfig(i)->startUniverse) + "</td> "
+				"<td> " + DataManager::getLedConfig(i)->startDmxAddress + "</td> "
+				"<td> " + DataManager::getLedConfig(i)->numberLEDs + "</td> "
+				"<td> " + DataManager::getLedConfig(i)->shortName + "</td> "
+				"<td> " + DataManager::getLedConfig(i)->longName + "</td> "
+				"</tr> ";
+	}
+	html += "</table> "
+	"<br><a href=\"/\">Return</a>"
+	"</body> "
+	"</html>";
+	return html;
 }
 
