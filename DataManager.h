@@ -9,11 +9,17 @@
 #define DATAMANAGER_H_
 
 #include "Arduino.h"
+#include "ledOutput.h"
 
 enum internetMode{wifiDHCP, ethernetDHCP, wifiStatic, ethernetStatic, accesspoint};
 
 #define WIFI_CONNECT_INTERVAL					10000	//interval in which the device tries to connect to wifi
 #define DEFAULT_INTERT_MODE						wifiDHCP
+#define DEFAULT_ARTNET_UNIVERSE					0
+#define DEFAULT_DMX_ADDR						1
+#define DEFAULT_NUMBER_LEDS						120
+#define DEFAULT_SHORT_NAME						"Pixel controller"
+#define DEFAULT_LONG_NAME						"Pixel controller by Georg"
 
 
 class DataManager {
@@ -22,13 +28,18 @@ public:
 	static internetMode getInetMode();
 	static void setInetMode(internetMode mode);
 	static void setScheduleRestart(bool restart);
+	static String setArtnetUniverse(int output, int universe);
+	static String setDMXAddress(int output, int address);
+	static String setNumberLeds(int output, int number);
+	static String setShortName(int output, String name);
+	static String setLongName(int output, String name);
 
 	static bool getWifiConnected();
 	static bool getScheduleRestart();
 
 	static String setWIFICredentials(const char* newSSID, const char* newPassword, const char* newHostName);
 
-	static void init();
+	static void init(ledOutput_t *leds);
 	static void update();
 private:
 	DataManager(){}
@@ -42,6 +53,7 @@ private:
 	static void WIFISetupMode();
 
 	static bool scheduleRestart;
+	static ledOutput_t *ledOutputs;
 
 	static unsigned long lastWifiConnectTryTime;
 };

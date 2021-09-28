@@ -8,6 +8,7 @@
 #include "DataManager.h"
 #include "Webserver.h"
 #include "config.h"
+#include "ledOutput.h"
 
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -20,6 +21,7 @@
 unsigned long DataManager::lastWifiConnectTryTime;
 bool DataManager::scheduleRestart;
 internetMode DataManager::inetMode;
+ledOutput_t* DataManager::ledOutputs;
 
 //	Flash address parameters
 #define SSID_MAX_LEN				30
@@ -30,18 +32,21 @@ internetMode DataManager::inetMode;
 #define	HOST_NAME_ADDR				62
 #define	INET_MODE_ADDR				93
 #define INET_MODE_LEN				sizeof(internetMode)
-
-
-#define CHECKSUM_ADDR				210
+#define CHECKSUM_ADDR				97
 #define	CHECKSUM_LEN				4
-#define	EEPROM_SIZE					250
+
+#define LED_CONFIG_ADDR				150
+#define LED_CONFIG_LEN				4*sizeof(ledConfig_t)
+
+#define	EEPROM_SIZE					150+4*sizeof(ledConfig_t)
 char ssid[SSID_MAX_LEN+1];
 char password[WIFI_PW_MAX_LEN+1];
 char hostName[HOST_NAME_MAX_LEN+1];
 
-void DataManager::init(){
+void DataManager::init(ledOutput_t *leds){
 	lastWifiConnectTryTime = 0;
 	scheduleRestart = false;
+	ledOutputs = leds;
 
 	//read from flash/blynk (update each other) or use default values
 	EEPROM.begin(EEPROM_SIZE);
@@ -62,6 +67,9 @@ void DataManager::init(){
 	}
 
 	eepromRead((uint8_t*)&inetMode, INET_MODE_ADDR, INET_MODE_LEN);
+	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
+		eepromRead((uint8_t*)&((ledOutputs+i)->config), LED_CONFIG_ADDR+i*sizeof(ledConfig_t), sizeof(ledConfig_t));
+	}
 
 	//enter wifi setup mode
 	if(inetMode == accesspoint){
@@ -103,10 +111,28 @@ void DataManager::init(){
 		EEPROM.commit();
 	}
 	//if EEPROM not initialized yet, write default values
+	bool notInitialized = false;
 	if(isnan((int)inetMode)){
+		notInitialized = true;
+	}
+	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
+		if(isnan((ledOutputs+i)->config.startUniverse) || isnan((ledOutputs+i)->config.startDmxAddress) ||
+				isnan((ledOutputs+i)->config.numberLEDs))
+			notInitialized = true;
+	}
+	if(notInitialized){
 		Serial.println("Writing default values");
 		inetMode = DEFAULT_INTERT_MODE;
 		eepromWrite((uint8_t*)&inetMode, INET_MODE_ADDR, INET_MODE_LEN, false);
+		for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
+			(ledOutputs+i)->config.startUniverse = DEFAULT_ARTNET_UNIVERSE;
+			(ledOutputs+i)->config.startDmxAddress = DEFAULT_DMX_ADDR;
+			(ledOutputs+i)->config.numberLEDs = DEFAULT_NUMBER_LEDS;
+			strcpy((ledOutputs+i)->config.shortName, DEFAULT_SHORT_NAME);
+			strcpy((ledOutputs+i)->config.longName, DEFAULT_LONG_NAME);
+			//write to eeprom
+			eepromWrite((uint8_t*)&((ledOutputs+i)->config), LED_CONFIG_ADDR+i*sizeof(ledConfig_t), sizeof(ledConfig_t), false);
+		}
 		EEPROM.commit();
 	}
 
@@ -116,6 +142,7 @@ void DataManager::init(){
 		lastWifiConnectTryTime = millis();
 		delay(500);
 	}
+	webserver_init();
 }
 
 /// standard update routine
@@ -272,4 +299,59 @@ String DataManager::setWIFICredentials(const char* newSSID, const char* newPassw
 	scheduleRestart = true;
 	return "Successfully set new WIFI credentials. You can change them again by restarting your machine while having both "
 			"buttons pressed and the distribution switch set to manual distribution.";
+}
+
+String DataManager::setArtnetUniverse(int output, int universe){
+	if(output < 0 || output >= NUMBER_LED_OUTPUTS)
+		return "Not a valid LED output. Please set a value from 0 to" + String(NUMBER_LED_OUTPUTS-1);
+	if(universe < 0)
+		return "Not a valid universe. Please set a value larger than 0.";
+	(ledOutputs + output)->config.startUniverse = universe;
+	eepromWrite((uint8_t*)&((ledOutputs+output)->config), LED_CONFIG_ADDR+output*sizeof(ledConfig_t), sizeof(ledConfig_t),
+			true);
+	return "Successfully updated Artnet universe";
+}
+
+String DataManager::setDMXAddress(int output, int address){
+	if(output < 0 || output >= NUMBER_LED_OUTPUTS)
+		return "Not a valid LED output. Please set a value from 0 to" + String(NUMBER_LED_OUTPUTS-1);
+	if(address < 1 || address > 512)
+		return "Not a valid DMX address. Please enter a value between 1 and 512.";
+	(ledOutputs + output)->config.startDmxAddress = address;
+	eepromWrite((uint8_t*)&((ledOutputs+output)->config), LED_CONFIG_ADDR+output*sizeof(ledConfig_t), sizeof(ledConfig_t),
+			true);
+	return "Successfully updated DMX address";
+}
+
+String DataManager::setNumberLeds(int output, int number){
+	if(output < 0 || output >= NUMBER_LED_OUTPUTS)
+		return "Not a valid LED output. Please set a value from 0 to" + String(NUMBER_LED_OUTPUTS-1);
+	if(number < 0 || number > MAX_LEDS_PER_OUTPUT)
+		return "Not a valid number of LEDs. Please set a value from 0 to " + String(MAX_LEDS_PER_OUTPUT);
+	(ledOutputs + output)->config.numberLEDs = number;
+	eepromWrite((uint8_t*)&((ledOutputs+output)->config), LED_CONFIG_ADDR+output*sizeof(ledConfig_t), sizeof(ledConfig_t),
+			true);
+	return "Successfully updated number LEDs";
+}
+
+String DataManager::setShortName(int output, String name){
+	if(output < 0 || output >= NUMBER_LED_OUTPUTS)
+		return "Not a valid LED output. Please set a value from 0 to" + String(NUMBER_LED_OUTPUTS-1);
+	if(name.length() > 17)
+		return "Short name is too long. Maximum allowed length is 17 characters";
+	strcpy((ledOutputs+output)->config.shortName, name.c_str());
+	eepromWrite((uint8_t*)&((ledOutputs+output)->config), LED_CONFIG_ADDR+output*sizeof(ledConfig_t), sizeof(ledConfig_t),
+			true);
+	return "Successfully updated short Name";
+}
+
+String DataManager::setLongName(int output, String name){
+	if(output < 0 || output >= NUMBER_LED_OUTPUTS)
+		return "Not a valid LED output. Please set a value from 0 to" + String(NUMBER_LED_OUTPUTS-1);
+	if(name.length() > 63)
+		return "Long name is too long. Maximum allowed length is 63 characters";
+	strcpy((ledOutputs+output)->config.longName, name.c_str());
+	eepromWrite((uint8_t*)&((ledOutputs+output)->config), LED_CONFIG_ADDR+output*sizeof(ledConfig_t), sizeof(ledConfig_t),
+			true);
+	return "Successfully updated long Name";
 }

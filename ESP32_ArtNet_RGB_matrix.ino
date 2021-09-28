@@ -37,7 +37,7 @@ ArtnetWifi artnet;
 void setup()
 {
 	ws2812_init(ws2812_pin);
-	DataManager::init();
+	DataManager::init(ledOutputs);
 
 	Serial.begin(115200);
 
@@ -51,12 +51,6 @@ void setup()
 			ledOutputs[i].data[j] = 0;
 		}
 	}
-
-	//todo: remove and do through DataManager
-	ledOutputs[0].config.numberLEDs = 144;
-	ledOutputs[0].config.pin = 4;
-	ledOutputs[0].config.startDmxAddress = 1;
-	ledOutputs[0].config.startUniverse = 1;
 }
 
 void loop()
