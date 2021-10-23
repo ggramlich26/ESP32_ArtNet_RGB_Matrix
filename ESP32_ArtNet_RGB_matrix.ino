@@ -10,11 +10,13 @@
 #include "ledOutput.h"
 //#include "webserver.h"
 #include "DataManager.h"
+#include "PixelDriver.h"
 
 
 #include "Arduino.h"
 #include "EEPROM.h"
 #include <stdint.h>
+#include <WiFi.h>
 
 #define LED_UPDATE_INTERVAL 50
 #define DMX_UPDATE_INTERVAL 100
@@ -34,12 +36,17 @@ uint8_t updateLeds = 0;
 // Artnet settings
 ArtnetWifi artnet;
 
+PixelDriver *pixelDriver = NULL;
+
+
 void setup()
 {
-	ws2812_init(ws2812_pin);
-	DataManager::init();
-
 	Serial.begin(115200);
+//	ws2812_init(ws2812_pin);
+	DataManager::init();
+	pixelDriver = PixelDriver::instance();
+
+	Serial.println("hello, just started up");
 
 #ifdef ON_LIGHT_TUBE_PCB
 	initSwitches();
@@ -53,7 +60,7 @@ void setup()
 	}
 
 	//todo: remove and do through DataManager
-	ledOutputs[0].config.numberLEDs = 144;
+	ledOutputs[0].config.numberLEDs = 90;
 	ledOutputs[0].config.pin = 4;
 	ledOutputs[0].config.startDmxAddress = 1;
 	ledOutputs[0].config.startUniverse = 1;
@@ -65,6 +72,8 @@ void loop()
 
 	//init artnet
 	if(DataManager::getWifiConnected() && !artnet_initialized){
+		Serial.print("my ip: ");
+		Serial.println(WiFi.localIP());
 		initArtnet();
 	}
 
@@ -79,7 +88,8 @@ void loop()
 	//update effect and LEDs
 	if(updateLeds){
 		updateLeds = 0;
-		ws2812_setColors(ledOutputs[0].config.numberLEDs, ledOutputs[0].data);
+//		ws2812_setColors(ledOutputs[0].config.numberLEDs, ledOutputs[0].data);
+		pixelDriver->send(PIXEL_DRIVER_CS_1, ledOutputs[0].data, ledOutputs[0].config.numberLEDs*3);
 	}
 
 	if(DataManager::getScheduleRestart()){
