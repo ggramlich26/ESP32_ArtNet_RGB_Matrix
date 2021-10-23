@@ -43,7 +43,7 @@ void setup()
 {
 	Serial.begin(115200);
 //	ws2812_init(ws2812_pin);
-	DataManager::init();
+	DataManager::init(ledOutputs);
 	pixelDriver = PixelDriver::instance();
 
 	Serial.println("hello, just started up");
@@ -58,12 +58,6 @@ void setup()
 			ledOutputs[i].data[j] = 0;
 		}
 	}
-
-	//todo: remove and do through DataManager
-	ledOutputs[0].config.numberLEDs = 90;
-	ledOutputs[0].config.pin = 4;
-	ledOutputs[0].config.startDmxAddress = 1;
-	ledOutputs[0].config.startUniverse = 1;
 }
 
 void loop()
@@ -81,7 +75,15 @@ void loop()
 		uint16_t opCode;
 		opCode = artnet.read();
 		if(opCode == ART_POLL){
-			artnet.sendArtPollReply();
+			for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
+				if(ledOutputs[i].config.numberLEDs > 0){
+					uint16_t endUniverse = ledOutputs[i].config.startUniverse + (ledOutputs[i].config.startDmxAddress +
+							ledOutputs[i].config.numberLEDs*3)/512;
+					for(int j = ledOutputs[i].config.startUniverse; j <= endUniverse; j++){
+						artnet.sendArtPollReply(j, ledOutputs[i].config.shortName, ledOutputs[i].config.longName);
+					}
+				}
+			}
 		}
 	}
 
