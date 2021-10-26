@@ -31,7 +31,6 @@ ledOutput_t ledOutputs[NUMBER_LED_OUTPUTS];
 
 
 uint8_t artnet_initialized = 0;
-uint8_t updateLeds = 0;
 
 // Artnet settings
 ArtnetWifi artnet;
@@ -52,11 +51,14 @@ void setup()
 	initSwitches();
 #endif
 
+	int csPins[NUMBER_LED_OUTPUTS] = PIXEL_DRIVER_CS;
 	//initialize LED data
 	for(uint8_t i = 0; i < NUMBER_LED_OUTPUTS; i++){
 		for(uint16_t j = 0; j < MAX_LEDS_PER_OUTPUT*3; j++){
 			ledOutputs[i].data[j] = 0;
 		}
+		ledOutputs[i].update = 0;
+		ledOutputs[i].CSPin = csPins[i];
 	}
 }
 
@@ -88,10 +90,12 @@ void loop()
 	}
 
 	//update effect and LEDs
-	if(updateLeds){
-		updateLeds = 0;
-//		ws2812_setColors(ledOutputs[0].config.numberLEDs, ledOutputs[0].data);
-		pixelDriver->send(PIXEL_DRIVER_CS_1, ledOutputs[0].data, ledOutputs[0].config.numberLEDs*3);
+	for(uint8_t i = 0; i < NUMBER_LED_OUTPUTS; i++){
+		if(ledOutputs[i].update){
+			ledOutputs[i].update = 0;
+			pixelDriver->send(ledOutputs[i].CSPin, ledOutputs[i].data, ledOutputs[i].config.numberLEDs*3);
+//			ws2812_setColors(ledOutputs[0].config.numberLEDs, ledOutputs[0].data);
+		}
 	}
 
 	if(DataManager::getScheduleRestart()){
@@ -122,9 +126,10 @@ void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* d
 				}
 			}
 		}
-
+		if (endUniverse == universe){
+			ledOutputs[i].update = 0xFF;
+		}
 	}
-	updateLeds = 1;
 }
 
 void onSync(IPAddress remoteIP) {

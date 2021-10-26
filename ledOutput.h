@@ -22,6 +22,8 @@ typedef struct ledConfig_s{
 typedef struct ledOutput_s{
 	ledConfig_t config;
 	uint8_t data[MAX_LEDS_PER_OUTPUT*3];
+	uint8_t update;
+	int CSPin;
 } ledOutput_t;
 
 //uint16_t ledOutput_getNumberLEDs(ledOutput_t *out);
