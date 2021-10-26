@@ -81,8 +81,10 @@ void DataManager::init(ledOutput_t *leds){
 		notInitialized = true;
 	}
 	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
-		if(isnan((ledOutputs+i)->config.startUniverse) || isnan((ledOutputs+i)->config.startDmxAddress) ||
-				isnan((ledOutputs+i)->config.numberLEDs))
+		if(isnan((ledOutputs+i)->config.startUniverse) || (ledOutputs+i)->config.startUniverse < 0 ||
+				(ledOutputs+i)->config.startDmxAddress < 1 || isnan((ledOutputs+i)->config.startDmxAddress) ||
+				isnan((ledOutputs+i)->config.numberLEDs) || (ledOutputs+i)->config.numberLEDs < 0 ||
+				(ledOutputs+i)->config.numberLEDs > MAX_LEDS_PER_OUTPUT)
 			notInitialized = true;
 	}
 	//if EEPROM not initialized yet, write default values
