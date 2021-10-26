@@ -15,7 +15,7 @@
 enum internetMode{wifiDHCP, accesspoint};
 
 #define WIFI_CONNECT_INTERVAL					10000	//interval in which the device tries to connect to wifi
-#define DEFAULT_INTERT_MODE						wifiDHCP
+#define DEFAULT_INTERT_MODE						accesspoint
 #define DEFAULT_ARTNET_UNIVERSE					0
 #define DEFAULT_DMX_ADDR						1
 #define DEFAULT_NUMBER_LEDS						120

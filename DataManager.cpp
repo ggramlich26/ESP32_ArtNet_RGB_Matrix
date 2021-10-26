@@ -71,12 +71,24 @@ void DataManager::init(ledOutput_t *leds){
 		eepromRead((uint8_t*)&((ledOutputs+i)->config), LED_CONFIG_ADDR+i*sizeof(ledConfig_t), sizeof(ledConfig_t));
 	}
 
-	//enter wifi setup mode
-	if(inetMode == accesspoint){
-		WIFISetupMode();
+	bool notInitialized = false;
+	//check if WIFI values are initialized correctly
+	if(checksum != calculateWIFIChecksum()){
+		notInitialized = true;
 	}
-	//if wifi not intialized correctly, use default values
-	else if(checksum != calculateWIFIChecksum()){
+	//check if all other variables are initialized correctly
+	if(isnan((int)inetMode)){
+		notInitialized = true;
+	}
+	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
+		if(isnan((ledOutputs+i)->config.startUniverse) || isnan((ledOutputs+i)->config.startDmxAddress) ||
+				isnan((ledOutputs+i)->config.numberLEDs))
+			notInitialized = true;
+	}
+	//if EEPROM not initialized yet, write default values
+	if(notInitialized){
+		Serial.println("Writing default values");
+		// set default values for WIFI
 		//copy default SSID to EEPROM and to the ssid variable
 		const char* default_ssid = DEFAULT_SSID;
 		for(uint8_t i = 0; i < SSID_MAX_LEN+1; i++){
@@ -109,19 +121,8 @@ void DataManager::init(ledOutput_t *leds){
 			EEPROM.write(CHECKSUM_ADDR+i, (uint8_t)(checksum>>(8*i)));
 		}
 		EEPROM.commit();
-	}
-	//if EEPROM not initialized yet, write default values
-	bool notInitialized = false;
-	if(isnan((int)inetMode)){
-		notInitialized = true;
-	}
-	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
-		if(isnan((ledOutputs+i)->config.startUniverse) || isnan((ledOutputs+i)->config.startDmxAddress) ||
-				isnan((ledOutputs+i)->config.numberLEDs))
-			notInitialized = true;
-	}
-	if(notInitialized){
-		Serial.println("Writing default values");
+
+		//set default values for all other variables
 		inetMode = DEFAULT_INTERT_MODE;
 		eepromWrite((uint8_t*)&inetMode, INET_MODE_ADDR, INET_MODE_LEN, false);
 		for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
@@ -136,7 +137,11 @@ void DataManager::init(ledOutput_t *leds){
 		EEPROM.commit();
 	}
 
-	if(DataManager::getInetMode() == wifiDHCP){
+	//enter wifi setup mode
+	if(DataManager::getInetMode() == accesspoint){
+		WIFISetupMode();
+	}
+	else if(DataManager::getInetMode() == wifiDHCP){
 		WiFi.setHostname(hostName);
 		WiFi.begin(ssid, password);
 		lastWifiConnectTryTime = millis();
