@@ -36,9 +36,9 @@ ledOutput_t* DataManager::ledOutputs;
 #define	CHECKSUM_LEN				4
 
 #define LED_CONFIG_ADDR				150
-#define LED_CONFIG_LEN				4*sizeof(ledConfig_t)
+#define LED_CONFIG_LEN				NUMBER_LED_OUTPUTS*sizeof(ledConfig_t)
 
-#define	EEPROM_SIZE					150+4*sizeof(ledConfig_t)
+#define	EEPROM_SIZE					150+NUMBER_LED_OUTPUTS*sizeof(ledConfig_t)
 char ssid[SSID_MAX_LEN+1];
 char password[WIFI_PW_MAX_LEN+1];
 char hostName[HOST_NAME_MAX_LEN+1];
@@ -83,8 +83,7 @@ void DataManager::init(ledOutput_t *leds){
 	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
 		if(isnan((ledOutputs+i)->config.startUniverse) || (ledOutputs+i)->config.startUniverse < 0 ||
 				(ledOutputs+i)->config.startDmxAddress < 1 || isnan((ledOutputs+i)->config.startDmxAddress) ||
-				isnan((ledOutputs+i)->config.numberLEDs) || (ledOutputs+i)->config.numberLEDs < 0 ||
-				(ledOutputs+i)->config.numberLEDs > MAX_LEDS_PER_OUTPUT)
+				isnan((ledOutputs+i)->config.numberLEDs) || (ledOutputs+i)->config.numberLEDs > MAX_LEDS_PER_OUTPUT)
 			notInitialized = true;
 	}
 	//if EEPROM not initialized yet, write default values
