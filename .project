@@ -47,6 +47,11 @@
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/esp32/hardware/esp32/1.0.4/libraries/EEPROM</locationURI>
 		</link>
 		<link>
+			<name>libraries/ESP8266_and_ESP32_OLED_driver_for_SSD1306_displays</name>
+			<type>2</type>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/ESP8266_and_ESP32_OLED_driver_for_SSD1306_displays/4.2.1</locationURI>
+		</link>
+		<link>
 			<name>libraries/FS</name>
 			<type>2</type>
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/esp32/hardware/esp32/1.0.4/libraries/FS</locationURI>
@@ -65,6 +70,11 @@
 			<name>libraries/WiFi</name>
 			<type>2</type>
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/esp32/hardware/esp32/1.0.4/libraries/WiFi</locationURI>
+		</link>
+		<link>
+			<name>libraries/Wire</name>
+			<type>2</type>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/esp32/hardware/esp32/1.0.4/libraries/Wire</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

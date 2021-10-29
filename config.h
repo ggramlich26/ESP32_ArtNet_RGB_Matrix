@@ -22,6 +22,16 @@
 #define NUMBER_LED_OUTPUTS	5
 //#define WS2812B_PINS	[4,5,6,7]
 
+//display pins
+#define DISPLAY_SDA			21
+#define DISPLAY_SCL			22
+
+//button pins
+#define BUTTON_UP			5
+#define	BUTTON_DOWN			4
+#define	BUTTON_LEFT			16
+#define BUTTON_RIGHT		15
+
 //WIFI settings
 #define DEFAULT_SSID		"Zeus Lighting"
 #define DEFAULT_WIFI_PW		"BeautyOfLight"

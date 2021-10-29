@@ -11,6 +11,7 @@
 //#include "webserver.h"
 #include "DataManager.h"
 #include "PixelDriver.h"
+#include "DisplayManager.h"
 
 
 #include "Arduino.h"
@@ -36,6 +37,7 @@ uint8_t artnet_initialized = 0;
 ArtnetWifi artnet;
 
 PixelDriver *pixelDriver = NULL;
+DisplayManager *displayManager = NULL;
 
 
 void setup()
@@ -44,6 +46,8 @@ void setup()
 //	ws2812_init(ws2812_pin);
 	DataManager::init(ledOutputs);
 	pixelDriver = PixelDriver::instance();
+	displayManager = DisplayManager::instance();
+	displayManager->init(DISPLAY_SDA, DISPLAY_SCL);
 
 	Serial.println("hello, just started up");
 
@@ -65,6 +69,18 @@ void setup()
 void loop()
 {
 	DataManager::update();
+	displayManager->update();
+
+	if(DataManager::getScheduleRestart()){
+		DataManager::setScheduleRestart(false);
+		delay(1000);
+		ESP.restart();
+		delay(1000);
+	}
+
+	//only recieve and display data if not in setup mode
+	if(DataManager::getInetMode() == accesspoint)
+		return;
 
 	//init artnet
 	if(DataManager::getWifiConnected() && !artnet_initialized){
@@ -96,12 +112,6 @@ void loop()
 			pixelDriver->send(ledOutputs[i].CSPin, ledOutputs[i].data, ledOutputs[i].config.numberLEDs*3);
 //			ws2812_setColors(ledOutputs[0].config.numberLEDs, ledOutputs[0].data);
 		}
-	}
-
-	if(DataManager::getScheduleRestart()){
-		DataManager::setScheduleRestart(false);
-		delay(1000);
-		ESP.restart();
 	}
 }
 

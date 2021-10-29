@@ -36,6 +36,7 @@ public:
 	static String setLongName(int output, String name);
 
 	static bool getWifiConnected();
+	static String getIPAddress();
 	static bool getScheduleRestart();
 	static ledConfig_t* getLedConfig(int output);
 

@@ -165,7 +165,7 @@ internetMode DataManager::getInetMode(){
 }
 
 void DataManager::setScheduleRestart(bool restart){
-	scheduleRestart = true;
+	scheduleRestart = restart;
 }
 
 bool DataManager::getScheduleRestart(){
@@ -183,6 +183,10 @@ void DataManager::setInetMode(internetMode mode){
 
 bool DataManager::getWifiConnected(){
 	return WiFi.isConnected();
+}
+
+String DataManager::getIPAddress(){
+	return WiFi.localIP().toString();
 }
 
 
@@ -259,14 +263,13 @@ void DataManager::WIFISetupMode(){
 	Serial.print("AP IP address: ");
 	Serial.println(IP);
 	webserver_init();
-	while(1){
-		delay(500);
-		if(scheduleRestart){
-			scheduleRestart = false;
-			delay(1000);
-			ESP.restart();
-		}
-	}
+//	while(1){
+//		if(scheduleRestart){
+//			scheduleRestart = false;
+//			delay(1000);
+//			ESP.restart();
+//		}
+//	}
 }
 
 String DataManager::setWIFICredentials(const char* newSSID, const char* newPassword, const char* newHostName){
