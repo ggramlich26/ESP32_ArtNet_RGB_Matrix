@@ -136,8 +136,8 @@ String handle_internet_settings_request(AsyncWebServerRequest *request){
 		updateMode = true;
 	}
 	if(request->hasParam("input_internet_mode_ethernet_dhcp")){
+		newMode = ethernetDHCP;
 		updateMode = true;
-		return "Ethernet is currently not supported. Please select a different internet mode.";
 	}
 	if(request->hasParam("input_internet_mode_access_point")){
 		newMode = accesspoint;

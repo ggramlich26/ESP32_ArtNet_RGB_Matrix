@@ -4,7 +4,8 @@
  */
 
 #undef MBEDTLS_CONFIG_FILE
-#include "ArtnetWifi.h"
+//#include "ArtnetWifi.h"
+#include "ArtNet.h"
 #include "config.h"
 #include "ws2812.h"
 #include "ledOutput.h"
@@ -34,7 +35,7 @@ ledOutput_t ledOutputs[NUMBER_LED_OUTPUTS];
 uint8_t artnet_initialized = 0;
 
 // Artnet settings
-ArtnetWifi artnet;
+ArtNet *artnet;
 
 PixelDriver *pixelDriver = NULL;
 DisplayManager *displayManager = NULL;
@@ -83,7 +84,7 @@ void loop()
 		return;
 
 	//init artnet
-	if(DataManager::getWifiConnected() && !artnet_initialized){
+	if(DataManager::getInternetConnected() && !artnet_initialized){
 		Serial.print("my ip: ");
 		Serial.println(WiFi.localIP());
 		initArtnet();
@@ -91,14 +92,14 @@ void loop()
 
 	if(artnet_initialized){
 		uint16_t opCode;
-		opCode = artnet.read();
+		opCode = artnet->read();
 		if(opCode == ART_POLL){
 			for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
 				if(ledOutputs[i].config.numberLEDs > 0){
 					uint16_t endUniverse = ledOutputs[i].config.startUniverse + (ledOutputs[i].config.startDmxAddress +
 							ledOutputs[i].config.numberLEDs*3)/512;
 					for(int j = ledOutputs[i].config.startUniverse; j <= endUniverse; j++){
-						artnet.sendArtPollReply(j, ledOutputs[i].config.shortName, ledOutputs[i].config.longName);
+						artnet->sendArtPollReply(j, ledOutputs[i].config.shortName, ledOutputs[i].config.longName);
 					}
 				}
 			}
@@ -146,8 +147,9 @@ void onSync(IPAddress remoteIP) {
 }
 
 void initArtnet(){
-	artnet.begin();
+	artnet = new ArtNet();
+	artnet->begin();
 	// this will be called for each packet received
-	artnet.setArtDmxCallback(onDmxFrame);
+	artnet->setArtDmxCallback(onDmxFrame);
 	artnet_initialized = true;
 }

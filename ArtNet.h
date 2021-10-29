@@ -1,21 +1,14 @@
 /*The MIT License (MIT)
-
-Copyright (c) 2014 NathanaÃ«l LÃ©caudÃ©
+Copyright (c) 2014 Nathanaël Lécaudé
 https://github.com/natcl/Artnet, http://forum.pjrc.com/threads/24688-Artnet-to-OctoWS2811
-
-Copyright (c) 2016,2019 Stephan Ruloff
-https://github.com/rstephan
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
-
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
-
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,27 +16,20 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
- */
+*/
 
-#ifndef ARTNET_WIFI_H
-#define ARTNET_WIFI_H
+#ifndef ARTNET_H_
+#define ARTNET_H_
 
 #include <functional>
 #include <Arduino.h>
-#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+#include <Udp.h>
+#include <EthernetENC.h>
+#include <EthernetUdp.h>
 #include <WiFi.h>
-#elif defined(ARDUINO_ARCH_ESP8266)
-#include <ESP8266WiFi.h>
-#elif defined(ARDUINO_ARCH_SAMD)
-#if defined(ARDUINO_SAMD_MKR1000)
-#include <WiFi101.h>
-#else
-#include <WiFiNINA.h>
-#endif
-#else
-#error "Architecture not supported!"
-#endif
 #include <WiFiUdp.h>
+
+#include "DataManager.h"
 
 // UDP specific
 #define ART_NET_PORT 6454
@@ -60,10 +46,10 @@ THE SOFTWARE.
 #define DMX_FUNC_PARAM uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* data
 typedef std::function <void (DMX_FUNC_PARAM)> StdFuncDmx_t;
 
-class ArtnetWifi
-{
+class ArtNet {
 public:
-	ArtnetWifi();
+	ArtNet();
+	virtual ~ArtNet();
 
 	void begin(String hostname = "");
 	void end();
@@ -80,7 +66,7 @@ public:
 	// Flush the UDP buffer
 	inline void flushBuffer(void)
 	{
-		Udp.flush();
+		Udp->flush();
 	}
 
 	// Return a pointer to the start of the DMX data
@@ -145,7 +131,7 @@ private:
 	uint16_t makeArtPollReplyPacket(void);
 	uint16_t makeArtPollReplyPacket(uint16_t universe, char *shortname, char *longName);
 
-	WiFiUDP Udp;
+	UDP *Udp;
 	String host;
 	String artPollHost;
 	uint8_t artnetPacket[MAX_BUFFER_ARTNET];
@@ -161,4 +147,4 @@ private:
 	static const char artnetId[];
 };
 
-#endif
+#endif /* ARTNET_H_ */

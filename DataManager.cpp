@@ -12,6 +12,7 @@
 
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <EthernetENC.h>
 
 #include "Arduino.h"
 #include "EEPROM.h"
@@ -41,7 +42,7 @@ ledOutput_t* DataManager::ledOutputs;
 #define	EEPROM_SIZE					150+NUMBER_LED_OUTPUTS*sizeof(ledConfig_t)
 char ssid[SSID_MAX_LEN+1];
 char password[WIFI_PW_MAX_LEN+1];
-char hostName[HOST_NAME_MAX_LEN+1];
+char mHostName[HOST_NAME_MAX_LEN+1];
 
 void DataManager::init(ledOutput_t *leds){
 	lastWifiConnectTryTime = 0;
@@ -59,7 +60,7 @@ void DataManager::init(ledOutput_t *leds){
 		password[i] = EEPROM.read(WIFI_PW_ADDR+i);
 	}
 	for(uint8_t i = 0; i < HOST_NAME_MAX_LEN+1; i++){
-		hostName[i] = EEPROM.read(HOST_NAME_ADDR+i);
+		mHostName[i] = EEPROM.read(HOST_NAME_ADDR+i);
 	}
 	uint32_t checksum = 0;
 	for(uint8_t i = 0; i < CHECKSUM_LEN; i++){
@@ -112,7 +113,7 @@ void DataManager::init(ledOutput_t *leds){
 		const char* default_host_name = DEFAULT_HOST_NAME;
 		for(uint8_t i = 0; i < HOST_NAME_MAX_LEN+1; i++){
 			EEPROM.write(HOST_NAME_ADDR + i, default_host_name[i]);
-			hostName[i] = default_host_name[i];
+			mHostName[i] = default_host_name[i];
 			if(default_host_name[i] == '\0'){
 				break;
 			}
@@ -143,12 +144,26 @@ void DataManager::init(ledOutput_t *leds){
 		WIFISetupMode();
 	}
 	else if(DataManager::getInetMode() == wifiDHCP){
-		WiFi.setHostname(hostName);
+		WiFi.setHostname(mHostName);
 		WiFi.begin(ssid, password);
 		lastWifiConnectTryTime = millis();
 		delay(500);
 	}
-	webserver_init();
+	else if(DataManager::getInetMode() == ethernetDHCP){
+		//todo
+		byte mac[] = ETHERNET_MAC;
+		Serial.println("begin ether init");
+		Ethernet.init(ETHERNET_CS);
+		Serial.println("begin ether ");
+		Ethernet.begin(mac);
+		Serial.println("ethernet initialized ");
+		lastWifiConnectTryTime = millis();
+		delay(500);
+	}
+	if(DataManager::getInetMode() != ethernetDHCP)
+		webserver_init();
+		//todo: fix webserver to work with ethernet as well
+	Serial.println("webserver initialized");
 }
 
 /// standard update routine
@@ -157,6 +172,9 @@ void DataManager::update(){
 			millis() >= lastWifiConnectTryTime + WIFI_CONNECT_INTERVAL){
 		WiFi.begin(ssid, password);
 		lastWifiConnectTryTime = millis();
+	}
+	else if(DataManager::getInetMode() == ethernetDHCP){
+		Ethernet.maintain();
 	}
 }
 
@@ -181,12 +199,18 @@ void DataManager::setInetMode(internetMode mode){
 	scheduleRestart = true;
 }
 
-bool DataManager::getWifiConnected(){
-	return WiFi.isConnected();
+bool DataManager::getInternetConnected(){
+	if(inetMode == wifiDHCP || inetMode == accesspoint)
+		return WiFi.isConnected();
+	else
+		return Ethernet.linkStatus() == LinkON;
 }
 
 String DataManager::getIPAddress(){
-	return WiFi.localIP().toString();
+	if(inetMode == wifiDHCP || inetMode == accesspoint)
+		return WiFi.localIP().toString();
+	else
+		return Ethernet.localIP().toString();
 }
 
 
@@ -213,8 +237,8 @@ uint32_t DataManager::calculateWIFIChecksum(){
 		}
 	}
 	for(uint8_t i = 0, j = 0; i < HOST_NAME_MAX_LEN+1; i++, j = (j+1)%CHECKSUM_LEN){
-		res ^= ((uint32_t)(hostName[i])<<(8*j));
-		if(hostName[i] == '\0'){
+		res ^= ((uint32_t)(mHostName[i])<<(8*j));
+		if(mHostName[i] == '\0'){
 			break;
 		}
 	}
@@ -294,7 +318,7 @@ String DataManager::setWIFICredentials(const char* newSSID, const char* newPassw
 	if(newHostName != NULL && strcmp(newHostName, "") != 0){
 		for(uint8_t i = 0; i < HOST_NAME_MAX_LEN+1; i++){
 			EEPROM.write(HOST_NAME_ADDR + i, newHostName[i]);
-			hostName[i] = newHostName[i];
+			mHostName[i] = newHostName[i];
 			if(newHostName[i] == '\0'){
 				break;
 			}

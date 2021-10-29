@@ -12,7 +12,7 @@
 #include "ledOutput.h"
 
 //enum internetMode{wifiDHCP, ethernetDHCP, wifiStatic, ethernetStatic, accesspoint};
-enum internetMode{wifiDHCP, accesspoint};
+enum internetMode{wifiDHCP, ethernetDHCP, accesspoint};
 
 #define WIFI_CONNECT_INTERVAL					10000	//interval in which the device tries to connect to wifi
 #define DEFAULT_INTERT_MODE						accesspoint
@@ -35,7 +35,7 @@ public:
 	static String setShortName(int output, String name);
 	static String setLongName(int output, String name);
 
-	static bool getWifiConnected();
+	static bool getInternetConnected();
 	static String getIPAddress();
 	static bool getScheduleRestart();
 	static ledConfig_t* getLedConfig(int output);

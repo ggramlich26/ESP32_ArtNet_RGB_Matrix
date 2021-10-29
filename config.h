@@ -32,6 +32,10 @@
 #define	BUTTON_LEFT			16
 #define BUTTON_RIGHT		15
 
+//ethernet shield settings
+#define	ETHERNET_CS			17
+#define ETHERNET_MAC		{0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02};
+
 //WIFI settings
 #define DEFAULT_SSID		"Zeus Lighting"
 #define DEFAULT_WIFI_PW		"BeautyOfLight"

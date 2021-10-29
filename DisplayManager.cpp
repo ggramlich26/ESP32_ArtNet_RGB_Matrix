@@ -56,7 +56,7 @@ void DisplayManager::displayTriangle(int line){
 
 void DisplayManager::displayIP(){
 	display->setTextAlignment(TEXT_ALIGN_RIGHT);
-	if(DataManager::getWifiConnected())
+	if(DataManager::getInternetConnected())
 		display->drawString(127, LINE_0_ORIG, DataManager::getIPAddress());
 	else if(DataManager::getInetMode() == accesspoint)
 		display->drawString(127, LINE_0_ORIG, "AP: 192.168.4.1");
@@ -85,7 +85,7 @@ void DisplayManager::displayMenu(){
 	case leds:
 		display->drawString(127,LINE_2_ORIG,String(DataManager::getLedConfig(currentOutput)->numberLEDs));
 		display->drawString(127,LINE_3_ORIG,(nextInternetMode==DataManager::getInetMode()?String(""):String("*")) +
-				(nextInternetMode==wifiDHCP?String("WIFI"):(nextInternetMode==accesspoint?String("Setup"):String("Other"))));
+				(nextInternetMode==wifiDHCP?String("WIFI"):(nextInternetMode==accesspoint?String("Setup"):String("Ethernet"))));
 		break;
 	}
 	//draw triangle for active item
@@ -143,8 +143,11 @@ void DisplayManager::onButtonLeft(btn_action action, int pin){
 		switch(nextInternetMode){
 		case wifiDHCP:
 			break;
-		case accesspoint:
+		case ethernetDHCP:
 			nextInternetMode = wifiDHCP;
+			break;
+		case accesspoint:
+			nextInternetMode = ethernetDHCP;
 			break;
 		}
 		break;
@@ -171,6 +174,9 @@ void DisplayManager::onButtonRight(btn_action action, int pin){
 	case mode:
 		switch(nextInternetMode){
 		case wifiDHCP:
+			nextInternetMode = ethernetDHCP;
+			break;
+		case ethernetDHCP:
 			nextInternetMode = accesspoint;
 			break;
 		case accesspoint:

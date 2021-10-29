@@ -1,21 +1,14 @@
 /*The MIT License (MIT)
-
-Copyright (c) 2014 NathanaÃ«l LÃ©caudÃ©
+Copyright (c) 2014 Nathanaël Lécaudé
 https://github.com/natcl/Artnet, http://forum.pjrc.com/threads/24688-Artnet-to-OctoWS2811
-
-Copyright (c) 2016,2019 Stephan Ruloff
-https://github.com/rstephan
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
-
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
-
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,34 +16,48 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
- */
+*/
 
-#include "ArtnetWifi.h"
+#include "ArtNet.h"
+
+const char ArtNet::artnetId[] = ART_NET_ID;
+
+ArtNet::ArtNet() {
+	if(DataManager::getInetMode() == wifiDHCP || DataManager::getInetMode() == accesspoint){
+		Udp = new WiFiUDP();
+	}
+	else if(DataManager::getInetMode() == ethernetDHCP){
+		Udp = new EthernetUDP();
+	}
+}
+
+ArtNet::~ArtNet() {
+	if(Udp != NULL)
+		delete(Udp);
+}
 
 
-const char ArtnetWifi::artnetId[] = ART_NET_ID;
 
-ArtnetWifi::ArtnetWifi() {}
-
-void ArtnetWifi::begin(String hostname)
+void ArtNet::begin(String hostname)
 {
-	Udp.begin(ART_NET_PORT);
+	Udp->begin(ART_NET_PORT);
 	host = hostname;
 	sequence = 1;
 	physical = 0;
 }
 
-void ArtnetWifi::end(){
-	Udp.stop();
+void ArtNet::end(){
+	if(Udp != NULL)
+		Udp->stop();
 }
 
-uint16_t ArtnetWifi::read(void)
+uint16_t ArtNet::read(void)
 {
-	packetSize = Udp.parsePacket();
+	packetSize = Udp->parsePacket();
 
 	if (packetSize <= MAX_BUFFER_ARTNET && packetSize > 0)
 	{
-		Udp.read(artnetPacket, MAX_BUFFER_ARTNET);
+		Udp->read(artnetPacket, MAX_BUFFER_ARTNET);
 
 		// Check that packetID is "Art-Net" else ignore
 		if (memcmp(artnetPacket, artnetId, sizeof(artnetId)) != 0) {
@@ -73,7 +80,7 @@ uint16_t ArtnetWifi::read(void)
 		}
 		if (opcode == ART_POLL)
 		{
-			artPollHost = IPAddress(Udp.remoteIP()).toString();
+			artPollHost = IPAddress(Udp->remoteIP()).toString();
 			return ART_POLL;
 		}
 	}
@@ -81,7 +88,7 @@ uint16_t ArtnetWifi::read(void)
 	return 0;
 }
 
-uint16_t ArtnetWifi::makePacket(void)
+uint16_t ArtNet::makePacket(void)
 {
 	uint16_t len;
 	uint16_t version;
@@ -108,13 +115,18 @@ uint16_t ArtnetWifi::makePacket(void)
 	return len;
 }
 
-uint16_t ArtnetWifi::makeArtPollReplyPacket(){
+uint16_t ArtNet::makeArtPollReplyPacket(){
 	return makeArtPollReplyPacket(0, "", "");
 }
 
-uint16_t ArtnetWifi::makeArtPollReplyPacket(uint16_t universe, char *shortName, char *longName){
-
-	uint32_t ipAddress = WiFi.localIP();
+uint16_t ArtNet::makeArtPollReplyPacket(uint16_t universe, char *shortName, char *longName){
+	uint32_t ipAddress = 0;
+	if(DataManager::getInetMode() == wifiDHCP || DataManager::getInetMode() == accesspoint){
+		ipAddress = WiFi.localIP();
+	}
+	else if(DataManager::getInetMode() == ethernetDHCP){
+		ipAddress = Ethernet.localIP();
+	}
 	uint16_t portNumber = 0x1936;
 	uint16_t versInfo = 1;
 	uint16_t netSwitch = (universe&0x7F00) | ((universe>>4)&0x000F);
@@ -206,49 +218,49 @@ uint16_t ArtnetWifi::makeArtPollReplyPacket(uint16_t universe, char *shortName, 
 	return 239;
 }
 
-int ArtnetWifi::sendArtPollReply(){
+int ArtNet::sendArtPollReply(){
 	uint16_t len;
 
 	len = makeArtPollReplyPacket();
-	Udp.beginPacket(artPollHost.c_str(), ART_NET_PORT);
-	Udp.write(artnetPacket, ART_DMX_START + len);
+	Udp->beginPacket(artPollHost.c_str(), ART_NET_PORT);
+	Udp->write(artnetPacket, ART_DMX_START + len);
 
-	return Udp.endPacket();
+	return Udp->endPacket();
 }
 
-int ArtnetWifi::sendArtPollReply(uint16_t universe, char *shortName, char *longName){
+int ArtNet::sendArtPollReply(uint16_t universe, char *shortName, char *longName){
 	uint16_t len;
 
 	len = makeArtPollReplyPacket(universe, shortName, longName);
-	Udp.beginPacket(artPollHost.c_str(), ART_NET_PORT);
-	Udp.write(artnetPacket, ART_DMX_START + len);
+	Udp->beginPacket(artPollHost.c_str(), ART_NET_PORT);
+	Udp->write(artnetPacket, ART_DMX_START + len);
 
-	return Udp.endPacket();
+	return Udp->endPacket();
 }
 
-int ArtnetWifi::write(void)
+int ArtNet::write(void)
 {
 	uint16_t len;
 
 	len = makePacket();
-	Udp.beginPacket(host.c_str(), ART_NET_PORT);
-	Udp.write(artnetPacket, ART_DMX_START + len);
+	Udp->beginPacket(host.c_str(), ART_NET_PORT);
+	Udp->write(artnetPacket, ART_DMX_START + len);
 
-	return Udp.endPacket();
+	return Udp->endPacket();
 }
 
-int ArtnetWifi::write(IPAddress ip)
+int ArtNet::write(IPAddress ip)
 {
 	uint16_t len;
 
 	len = makePacket();
-	Udp.beginPacket(ip, ART_NET_PORT);
-	Udp.write(artnetPacket, ART_DMX_START + len);
+	Udp->beginPacket(ip, ART_NET_PORT);
+	Udp->write(artnetPacket, ART_DMX_START + len);
 
-	return Udp.endPacket();
+	return Udp->endPacket();
 }
 
-void ArtnetWifi::setByte(uint16_t pos, uint8_t value)
+void ArtNet::setByte(uint16_t pos, uint8_t value)
 {
 	if (pos > 512) {
 		return;
@@ -256,7 +268,7 @@ void ArtnetWifi::setByte(uint16_t pos, uint8_t value)
 	artnetPacket[ART_DMX_START + pos] = value;
 }
 
-void ArtnetWifi::printPacketHeader(void)
+void ArtNet::printPacketHeader(void)
 {
 	Serial.print("packet size = ");
 	Serial.print(packetSize);
@@ -270,7 +282,7 @@ void ArtnetWifi::printPacketHeader(void)
 	Serial.println(sequence);
 }
 
-void ArtnetWifi::printPacketContent(void)
+void ArtNet::printPacketContent(void)
 {
 	for (uint16_t i = ART_DMX_START ; i < dmxDataLength ; i++){
 		Serial.print(artnetPacket[i], DEC);
