@@ -59,6 +59,7 @@ private:
 	static ledOutput_t *ledOutputs;
 
 	static unsigned long lastWifiConnectTryTime;
+	static bool ethernetInitialized;
 };
 #endif /* DATAMANAGER_H_ */
 

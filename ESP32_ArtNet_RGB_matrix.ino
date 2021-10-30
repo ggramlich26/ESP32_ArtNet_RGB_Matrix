@@ -147,9 +147,13 @@ void onSync(IPAddress remoteIP) {
 }
 
 void initArtnet(){
+	//avoid not working ArtNet if ethernet is not connected on startup
+	if(!DataManager::getInternetConnected())
+		return;
 	artnet = new ArtNet();
 	artnet->begin();
 	// this will be called for each packet received
 	artnet->setArtDmxCallback(onDmxFrame);
 	artnet_initialized = true;
+	Serial.println("ArtNet initialized");
 }

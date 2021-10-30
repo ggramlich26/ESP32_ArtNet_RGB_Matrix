@@ -20,6 +20,7 @@
 
 
 unsigned long DataManager::lastWifiConnectTryTime;
+bool DataManager::ethernetInitialized;
 bool DataManager::scheduleRestart;
 internetMode DataManager::inetMode;
 ledOutput_t* DataManager::ledOutputs;
@@ -46,6 +47,7 @@ char mHostName[HOST_NAME_MAX_LEN+1];
 
 void DataManager::init(ledOutput_t *leds){
 	lastWifiConnectTryTime = 0;
+	ethernetInitialized = false;
 	scheduleRestart = false;
 	ledOutputs = leds;
 
@@ -150,13 +152,12 @@ void DataManager::init(ledOutput_t *leds){
 		delay(500);
 	}
 	else if(DataManager::getInetMode() == ethernetDHCP){
-		//todo
-		byte mac[] = ETHERNET_MAC;
-		Serial.println("begin ether init");
 		Ethernet.init(ETHERNET_CS);
-		Serial.println("begin ether ");
-		Ethernet.begin(mac);
-		Serial.println("ethernet initialized ");
+		if(Ethernet.linkStatus() == LinkON){
+			byte mac[] = ETHERNET_MAC;
+			Ethernet.begin(mac);
+			ethernetInitialized = true;
+		}
 		lastWifiConnectTryTime = millis();
 		delay(500);
 	}
@@ -174,7 +175,14 @@ void DataManager::update(){
 		lastWifiConnectTryTime = millis();
 	}
 	else if(DataManager::getInetMode() == ethernetDHCP){
-		Ethernet.maintain();
+		if(ethernetInitialized){
+			Ethernet.maintain();
+		}
+		else if(Ethernet.linkStatus() == LinkON){
+			byte mac[] = ETHERNET_MAC;
+			Ethernet.begin(mac);
+			ethernetInitialized = true;
+		}
 	}
 }
 
@@ -203,7 +211,7 @@ bool DataManager::getInternetConnected(){
 	if(inetMode == wifiDHCP || inetMode == accesspoint)
 		return WiFi.isConnected();
 	else
-		return Ethernet.linkStatus() == LinkON;
+		return (Ethernet.linkStatus() == LinkON) && !(Ethernet.localIP().toString().equals("0.0.0.0"));
 }
 
 String DataManager::getIPAddress(){
