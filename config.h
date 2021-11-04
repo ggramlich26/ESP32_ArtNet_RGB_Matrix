@@ -27,10 +27,10 @@
 #define DISPLAY_SCL			22
 
 //button pins
-#define BUTTON_UP			5
-#define	BUTTON_DOWN			4
-#define	BUTTON_LEFT			16
-#define BUTTON_RIGHT		15
+#define BUTTON_UP			4
+#define	BUTTON_DOWN			5
+#define	BUTTON_LEFT			15
+#define BUTTON_RIGHT		16
 
 //ethernet shield settings
 #define	ETHERNET_CS			17
