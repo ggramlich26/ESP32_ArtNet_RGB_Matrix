@@ -162,8 +162,7 @@ void DataManager::init(ledOutput_t *leds){
 		delay(500);
 	}
 	if(DataManager::getInetMode() != ethernetDHCP)
-		webserver_init();
-		//todo: fix webserver to work with ethernet as well
+		webserver_init_for_wifi();
 	Serial.println("webserver initialized");
 }
 
@@ -177,10 +176,12 @@ void DataManager::update(){
 	else if(DataManager::getInetMode() == ethernetDHCP){
 		if(ethernetInitialized){
 			Ethernet.maintain();
+			webserver_update_for_ethernet();
 		}
 		else if(Ethernet.linkStatus() == LinkON){
 			byte mac[] = ETHERNET_MAC;
 			Ethernet.begin(mac);
+			webserver_init_for_ethernet();
 			ethernetInitialized = true;
 		}
 	}
@@ -294,7 +295,7 @@ void DataManager::WIFISetupMode(){
 	IPAddress IP = WiFi.softAPIP();
 	Serial.print("AP IP address: ");
 	Serial.println(IP);
-	webserver_init();
+	webserver_init_for_wifi();
 //	while(1){
 //		if(scheduleRestart){
 //			scheduleRestart = false;

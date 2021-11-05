@@ -16,12 +16,17 @@
 #include <ESPAsyncTCP.h>
 #endif
 #include <ESPAsyncWebServer.h>
+#include <Ethernet.h>
 
 String handle_internet_settings_request(AsyncWebServerRequest *request);
 String handle_led_settings_request(AsyncWebServerRequest *request);
+String handle_internet_settings_request(String ssid, String pw, String hostName, internetMode newMode, bool updateInternetMode);
+String handle_led_settings_request(String output, String artnet, String dmx, String numberLEDs, String shortDesc, String longDesc);
 String create_config_table_only();
+String ethernet_server_handle_form(String getLine);
 
 AsyncWebServer server(80);
+EthernetServer ethernetServer(80);
 
 const char* SSID_INPUT = "input_ssid";
 const char* PASSWORD_INPUT = "input_password";
@@ -91,7 +96,7 @@ void notFound(AsyncWebServerRequest *request) {
 }
 
 
-void webserver_init(){
+void webserver_init_for_wifi(){
 	// Send web page with input fields to client
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send(200, "text/html", StringIndexHtmlStart + create_config_table_only() + StringIndexHtmlEnd);
@@ -109,91 +114,132 @@ void webserver_init(){
 	server.begin();
 }
 
+void webserver_init_for_ethernet(){
+	ethernetServer.begin();
+}
+
+//this function has to be called regularily when running on ethernet
+void webserver_update_for_ethernet(){
+	// listen for incoming clients
+	EthernetClient client = ethernetServer.available();
+	if (client) {
+		Serial.println("Got a client");
+		String getLine;
+		while (client.connected()) {
+			if (client.available()) {
+				//read one line
+				char buffer[200];
+				char c = 'a';
+				int i = 0;
+				while(c != '\n'){
+					if(client.available()){
+						c = client.read();
+						buffer[i] = c;
+						i++;
+					}
+				}
+				buffer[i-2] = '\0';
+				String line = String(buffer);
+				Serial.println(line);
+				//save GET line
+				if(line.substring(0, 4).equals("GET ")){
+					getLine = line;
+				}
+				//if request finished: an http request ends with a blank line
+				if(line.equals("")){
+					Serial.println("getLine: " + getLine);
+					if(getLine.substring(0,6).equals("GET / ")){
+						client.println("HTTP/1.1 200 OK");
+						client.println("Content-Type: text/html");
+						client.println();
+						client.println(StringIndexHtmlStart + create_config_table_only() + StringIndexHtmlEnd);
+					}
+					else if(getLine.substring(0,9).equals("GET /get?")){
+						String reply = ethernet_server_handle_form(getLine);
+						client.println("HTTP/1.1 200 OK");
+						client.println("Content-Type: text/html");
+						client.println();
+						client.print("<p style=\"font-size:25\">");
+						client.print(reply);
+						client.println("</p><br><a href=\"/\">Return</a>");
+					}
+					else{
+						//not found
+						client.println("HTTP/1.1 404 OK");
+						client.println("Content-Type: text/plain");
+						client.println();
+						client.println("Not found");
+					}
+					break;
+				}
+			}
+		}
+		// give the web browser time to receive the data
+		delay(1);
+		// close the connection:
+		client.stop();
+	}
+}
+
 String handle_internet_settings_request(AsyncWebServerRequest *request){
-	String new_ssid;
-	String new_password;
-	String new_host_name;
+	String ssid;
+	String pw;
+	String hostName;
 	internetMode newMode;
-	bool update = false;
-	bool updateMode = false;
+	bool updateInternetMode = false;
 	// GET newnew  SSID value on <ESP_IP>/get?input_ssid=<inputMessage>
 	if (request->hasParam(SSID_INPUT)) {
-		new_ssid = request->getParam(SSID_INPUT)->value();
-		update = true;
+		ssid = request->getParam(SSID_INPUT)->value();
 	}
 	// GET new password value on <ESP_IP>/get?input_password=<inputMessage>
 	if (request->hasParam(PASSWORD_INPUT)) {
-		new_password = request->getParam(PASSWORD_INPUT)->value();
-		update = true;
+		pw = request->getParam(PASSWORD_INPUT)->value();
 	}
 	// GET new host name value on <ESP_IP>/get?input_host_name=<inputMessage>
 	if (request->hasParam(HOST_NAME_INPUT)) {
-		new_host_name = request->getParam(HOST_NAME_INPUT)->value();
-		update = true;
+		hostName = request->getParam(HOST_NAME_INPUT)->value();
 	}
 	if(request->hasParam("input_internet_mode_wifi_dhcp")){
 		newMode = wifiDHCP;
-		updateMode = true;
+		updateInternetMode = true;
 	}
 	if(request->hasParam("input_internet_mode_ethernet_dhcp")){
 		newMode = ethernetDHCP;
-		updateMode = true;
+		updateInternetMode = true;
 	}
 	if(request->hasParam("input_internet_mode_access_point")){
 		newMode = accesspoint;
-		updateMode = true;
+		updateInternetMode = true;
 	}
-	if(updateMode){
-		DataManager::setInetMode(newMode);
-	}
-	if(update){
-		return DataManager::setWIFICredentials((new_ssid != NULL?new_ssid.c_str():""),
-				(new_password != NULL?new_password.c_str():""),
-				(new_host_name != NULL?new_host_name.c_str():""));
-	}
-	return "";
+	return handle_internet_settings_request(ssid, pw, hostName, newMode, updateInternetMode);
 
 }
 
 String handle_led_settings_request(AsyncWebServerRequest *request){
-	if(!request->hasParam(LED_OUTPUT_INPUT) || request->getParam(LED_OUTPUT_INPUT)->value().equals(""))
-		return "Please enter an output to update from 0 to " + String(NUMBER_LED_OUTPUTS-1);
-	int output = atoi(request->getParam(LED_OUTPUT_INPUT)->value().c_str());
-	String reply = "";
+	String output = "";
+	String artnet = "";
+	String dmx = "";
+	String numberLEDs = "";
+	String shortDesc = "";
+	String longDesc = "";
+	if(request->hasParam(LED_OUTPUT_INPUT))
+		output = request->getParam(LED_OUTPUT_INPUT)->value();
 	if(request->hasParam(ARTNET_UNIVERSE_INPUT)){
-		String input = request->getParam(ARTNET_UNIVERSE_INPUT)->value();
-		if(!input.equals("")){
-			int data = atoi(input.c_str());
-			reply += DataManager::setArtnetUniverse(output, data) + " <br> ";
-		}
+		artnet = request->getParam(ARTNET_UNIVERSE_INPUT)->value();
 	}
 	if(request->hasParam(DMX_ADDR_INPUT)){
-		String input = request->getParam(DMX_ADDR_INPUT)->value();
-		if(!input.equals("")){
-			int data = atoi(input.c_str());
-			reply += DataManager::setDMXAddress(output, data) + " <br> ";
-		}
+		dmx = request->getParam(DMX_ADDR_INPUT)->value();
 	}
 	if(request->hasParam(NUMBER_LEDS_INPUT)){
-		String input = request->getParam(NUMBER_LEDS_INPUT)->value();
-		if(!input.equals("")){
-			int data = atoi(input.c_str());
-			reply += DataManager::setNumberLeds(output, data) + " <br> ";
-		}
+		numberLEDs = request->getParam(NUMBER_LEDS_INPUT)->value();
 	}
 	if(request->hasParam(SHORT_DESCRIPTOR_INPUT)){
-		String input = request->getParam(SHORT_DESCRIPTOR_INPUT)->value();
-		if(!input.equals("")){
-			reply += DataManager::setShortName(output, input) + " <br> ";
-		}
+		shortDesc = request->getParam(SHORT_DESCRIPTOR_INPUT)->value();
 	}
 	if(request->hasParam(LONG_DESCRIPTOR_INPUT)){
-		String input = request->getParam(LONG_DESCRIPTOR_INPUT)->value();
-		if(!input.equals("")){
-			reply += DataManager::setLongName(output, input) + " <br> ";
-		}
+		longDesc = request->getParam(LONG_DESCRIPTOR_INPUT)->value();
 	}
-	return reply;
+	return handle_led_settings_request(output, artnet, dmx, numberLEDs, shortDesc, longDesc);
 }
 
 String create_config_table_only(){
@@ -215,4 +261,151 @@ String create_config_table_only(){
 	html += "</table> ";
 	return html;
 }
+
+String ethernet_server_handle_form(String getLine){
+	String ssid = "";
+	String pw = "";
+	String hostName = "";
+	String inetMode = "";
+	String output = "";
+	String artnet = "";
+	String dmx = "";
+	String leds = "";
+	String shortdesc = "";
+	String longdesc = "";
+	//replace space after last parameter with a & sign for easier processing later on
+	int index = getLine.lastIndexOf('=');
+	if(index != -1){
+		index = getLine.indexOf(' ', index);
+		getLine[index] = '&';
+	}
+	index = getLine.indexOf(SSID_INPUT);
+	if(index != -1){
+		int startIndex = index + String(SSID_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		ssid = getLine.substring(startIndex, endIndex);
+	}
+	index = getLine.indexOf(PASSWORD_INPUT);
+	if(index != -1){
+		int startIndex = index + String(PASSWORD_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		pw = getLine.substring(startIndex, endIndex);
+	}
+	index = getLine.indexOf(HOST_NAME_INPUT);
+	if(index != -1){
+		int startIndex = index + String(HOST_NAME_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		hostName = getLine.substring(startIndex, endIndex);
+	}
+	bool updateInternetMode = false;
+	internetMode newMode = wifiDHCP;
+	if(getLine.indexOf("input_internet_mode_wifi_dhcp") != -1){
+		updateInternetMode = true;
+		newMode = wifiDHCP;
+	}
+	if(getLine.indexOf("input_internet_mode_ethernet_dhcp") != -1){
+		newMode = ethernetDHCP;
+		updateInternetMode = true;
+	}
+	if(getLine.indexOf("input_internet_mode_access_point") != -1){
+		newMode = accesspoint;
+		updateInternetMode = true;
+	}
+	String reply = handle_internet_settings_request(ssid, pw, hostName, newMode, updateInternetMode);
+	if(!reply.equals("")){
+		return reply;
+	}
+
+	//handle led settings
+	index = getLine.indexOf(LED_OUTPUT_INPUT);
+	if(index != -1){
+		int startIndex = index + String(LED_OUTPUT_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		output = getLine.substring(startIndex, endIndex);
+	}
+	index = getLine.indexOf(ARTNET_UNIVERSE_INPUT);
+	if(index != -1){
+		int startIndex = index + String(ARTNET_UNIVERSE_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		artnet = getLine.substring(startIndex, endIndex);
+	}
+	index = getLine.indexOf(DMX_ADDR_INPUT);
+	if(index != -1){
+		int startIndex = index + String(DMX_ADDR_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		dmx = getLine.substring(startIndex, endIndex);
+	}
+	index = getLine.indexOf(NUMBER_LEDS_INPUT);
+	if(index != -1){
+		int startIndex = index + String(NUMBER_LEDS_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		leds = getLine.substring(startIndex, endIndex);
+	}
+	index = getLine.indexOf(SHORT_DESCRIPTOR_INPUT);
+	if(index != -1){
+		int startIndex = index + String(SHORT_DESCRIPTOR_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		shortdesc = getLine.substring(startIndex, endIndex);
+	}
+	index = getLine.indexOf(LONG_DESCRIPTOR_INPUT);
+	if(index != -1){
+		int startIndex = index + String(LONG_DESCRIPTOR_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		longdesc = getLine.substring(startIndex, endIndex);
+	}
+	return handle_led_settings_request(output, artnet, dmx, leds, shortdesc, longdesc);
+}
+
+String handle_internet_settings_request(String ssid, String pw, String hostName, internetMode newMode, bool updateInternetMode){
+	bool update = false;
+	if(ssid != NULL && !ssid.equals(""))
+		update = true;
+	if(pw != NULL && !pw.equals(""))
+		update = true;
+	if(hostName != NULL && !hostName.equals(""))
+		update = true;
+	String reply = "";
+	if(updateInternetMode){
+		DataManager::setInetMode(newMode);
+		reply += "Successfully set internet mode <br>";
+	}
+	if(update){
+		reply += DataManager::setWIFICredentials((ssid != NULL?ssid.c_str():""),
+				(pw != NULL?pw.c_str():""),
+				(hostName != NULL?hostName.c_str():""));
+	}
+	return reply;
+}
+
+String handle_led_settings_request(String output, String artnet, String dmx, String numberLEDs, String shortDesc, String longDesc){
+	if(output == NULL || output.equals(""))
+		return "Please enter an output to update from 0 to " + String(NUMBER_LED_OUTPUTS-1);
+	int outputVal = atoi(output.c_str());
+	String reply = "";
+	if(artnet != NULL && !artnet.equals("")){
+		int data = atoi(artnet.c_str());
+		reply += DataManager::setArtnetUniverse(outputVal, data) + " <br> ";
+	}
+	if(dmx != NULL && !dmx.equals("")){
+		int data = atoi(dmx.c_str());
+		reply += DataManager::setDMXAddress(outputVal, data) + " <br> ";
+	}
+	if(numberLEDs != NULL && !numberLEDs.equals("")){
+		int data = atoi(numberLEDs.c_str());
+		reply += DataManager::setNumberLeds(outputVal, data) + " <br> ";
+	}
+	if(shortDesc != NULL && !shortDesc.equals("")){
+		shortDesc.replace("+", " ");
+		reply += DataManager::setShortName(outputVal, shortDesc) + " <br> ";
+	}
+	if(longDesc != NULL && !longDesc.equals("")){
+		longDesc.replace("+", " ");
+		reply += DataManager::setLongName(outputVal, longDesc) + " <br> ";
+	}
+	return reply;
+}
+
+
+
+
 

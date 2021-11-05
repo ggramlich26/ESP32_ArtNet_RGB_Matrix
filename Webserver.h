@@ -12,7 +12,9 @@
 extern "C" {
 #endif
 
-void webserver_init();
+void webserver_init_for_wifi();
+void webserver_init_for_ethernet();
+void webserver_update_for_ethernet();
 
 #ifdef __cplusplus
 } // extern "C"
