@@ -84,6 +84,10 @@ void DisplayManager::displayMenu(){
 		break;
 	case leds:
 		display->drawString(127,LINE_2_ORIG,String(DataManager::getLedConfig(currentOutput)->numberLEDs));
+		display->drawString(127,LINE_3_ORIG,String(DataManager::getLedConfig(currentOutput)->channelsPerUniverse));
+		break;
+	case channels:
+		display->drawString(127,LINE_2_ORIG,String(DataManager::getLedConfig(currentOutput)->channelsPerUniverse));
 		display->drawString(127,LINE_3_ORIG,(nextInternetMode==DataManager::getInetMode()?String(""):String("*")) +
 				(nextInternetMode==wifiDHCP?String("WIFI"):(nextInternetMode==accesspoint?String("Setup"):String("Ethernet"))));
 		break;
@@ -139,6 +143,9 @@ void DisplayManager::onButtonLeft(btn_action action, int pin){
 	case leds:
 		DataManager::setNumberLeds(currentOutput, DataManager::getLedConfig(currentOutput)->numberLEDs-1);
 		break;
+	case channels:
+		DataManager::setChannelsPerUniverse(currentOutput, DataManager::getLedConfig(currentOutput)->channelsPerUniverse-1);
+		break;
 	case mode:
 		switch(nextInternetMode){
 		case wifiDHCP:
@@ -170,6 +177,9 @@ void DisplayManager::onButtonRight(btn_action action, int pin){
 		break;
 	case leds:
 		DataManager::setNumberLeds(currentOutput, DataManager::getLedConfig(currentOutput)->numberLEDs+1);
+		break;
+	case channels:
+		DataManager::setChannelsPerUniverse(currentOutput, DataManager::getLedConfig(currentOutput)->channelsPerUniverse+1);
 		break;
 	case mode:
 		switch(nextInternetMode){

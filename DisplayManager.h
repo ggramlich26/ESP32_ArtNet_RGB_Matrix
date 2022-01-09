@@ -35,7 +35,7 @@ private:
 	DisplayManager();
 	DisplayManager (const DisplayManager& );
 	virtual ~DisplayManager();
-	enum menuItems {output=0, dmx=1, artnet=2, leds=3, mode=4};
+	enum menuItems {output=0, dmx=1, artnet=2, leds=3, channels=4, mode=5};
 	SSD1306Wire *display;
 	void displayIP();
 	void displayTriangle(int line);
@@ -45,7 +45,7 @@ private:
 	void onButtonLeft(btn_action action, int pin);
 	void onButtonRight(btn_action action, int pin);
 
-	String menuItemStrings[4] = {"DMX", "ArtNet", "#LEDs", "Mode"};
+	String menuItemStrings[5] = {"DMX", "ArtNet", "#LEDs", "Chans/Uni", "Mode"};
 	bool updateDisplay = false;
 	int dispStartItem = dmx;
 	int activeItem = output;
