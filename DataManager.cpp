@@ -86,7 +86,9 @@ void DataManager::init(ledOutput_t *leds){
 	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
 		if(isnan((ledOutputs+i)->config.startUniverse) || (ledOutputs+i)->config.startUniverse < 0 ||
 				(ledOutputs+i)->config.startDmxAddress < 1 || isnan((ledOutputs+i)->config.startDmxAddress) ||
-				isnan((ledOutputs+i)->config.numberLEDs) || (ledOutputs+i)->config.numberLEDs > MAX_LEDS_PER_OUTPUT)
+				isnan((ledOutputs+i)->config.numberLEDs) || (ledOutputs+i)->config.numberLEDs > MAX_LEDS_PER_OUTPUT ||
+				isnan((ledOutputs+i)->config.channelsPerUniverse) || (ledOutputs+i)->config.channelsPerUniverse < 1 ||
+				(ledOutputs+i)->config.channelsPerUniverse > 512)
 			notInitialized = true;
 	}
 	//if EEPROM not initialized yet, write default values
@@ -133,6 +135,7 @@ void DataManager::init(ledOutput_t *leds){
 			(ledOutputs+i)->config.startUniverse = DEFAULT_ARTNET_UNIVERSE;
 			(ledOutputs+i)->config.startDmxAddress = DEFAULT_DMX_ADDR;
 			(ledOutputs+i)->config.numberLEDs = DEFAULT_NUMBER_LEDS;
+			(ledOutputs+i)->config.channelsPerUniverse = DEFAULT_CHANNELS_PER_UNIVERSE;
 			strcpy((ledOutputs+i)->config.shortName, DEFAULT_SHORT_NAME);
 			strcpy((ledOutputs+i)->config.longName, DEFAULT_LONG_NAME);
 			//write to eeprom
@@ -374,6 +377,17 @@ String DataManager::setNumberLeds(int output, int number){
 	eepromWrite((uint8_t*)&((ledOutputs+output)->config), LED_CONFIG_ADDR+output*sizeof(ledConfig_t), sizeof(ledConfig_t),
 			true);
 	return "Successfully updated number LEDs";
+}
+
+String DataManager::setChannelsPerUniverse(int output, int channels){
+	if(output < 0 || output >= NUMBER_LED_OUTPUTS)
+		return "Not a valid LED output. Please set a value from 0 to" + String(NUMBER_LED_OUTPUTS-1);
+	if(channels < 1 || channels > 512)
+		return "Not a valid number of channels per universe. Please set a value from 1 to 512";
+	(ledOutputs + output)->config.channelsPerUniverse = channels;
+	eepromWrite((uint8_t*)&((ledOutputs+output)->config), LED_CONFIG_ADDR+output*sizeof(ledConfig_t), sizeof(ledConfig_t),
+			true);
+	return "Successfully updated channels per universe";
 }
 
 String DataManager::setShortName(int output, String name){

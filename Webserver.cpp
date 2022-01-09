@@ -21,7 +21,7 @@
 String handle_internet_settings_request(AsyncWebServerRequest *request);
 String handle_led_settings_request(AsyncWebServerRequest *request);
 String handle_internet_settings_request(String ssid, String pw, String hostName, internetMode newMode, bool updateInternetMode);
-String handle_led_settings_request(String output, String artnet, String dmx, String numberLEDs, String shortDesc, String longDesc);
+String handle_led_settings_request(String output, String artnet, String dmx, String numberLEDs, String channelsPerUniverse, String shortDesc, String longDesc);
 String create_config_table_only();
 String ethernet_server_handle_form(String getLine);
 
@@ -36,6 +36,7 @@ const char* LED_OUTPUT_INPUT = "input_led_output";
 const char* ARTNET_UNIVERSE_INPUT = "input_artnet_universe";
 const char* DMX_ADDR_INPUT = "input_dmx_addr";
 const char* NUMBER_LEDS_INPUT = "input_number_leds";
+const char* CHANNELS_PER_UNIVERSE_INPUT = "input_channels_per_universe";
 const char* SHORT_DESCRIPTOR_INPUT = "input_short_descriptor";
 const char* LONG_DESCRIPTOR_INPUT = "input_long_descriptor";
 
@@ -65,6 +66,8 @@ String StringIndexHtmlEnd =
 		"<input style=\"font-size:35px\" name=\"input_dmx_addr\" min=\"1\" max=\"512\" type=\"number\"> </p> "
 		"<p style=\"font-size:35px\"> <label for=\"input_number_leds\">Number LEDs: &nbsp </label> "
 		"<input style=\"font-size:35px\" name=\"input_number_leds\" min=\"0\" max=\"300\" type=\"number\"> </p> "
+		"<p style=\"font-size:35px\"> <label for=\"input_channels_per_universe\">Channels per universe: &nbsp </label> "
+		"<input style=\"font-size:35px\" name=\"input_channels_per_universe\" min=\"1\" max=\"512\" type=\"number\"> </p> "
 		"<p style=\"font-size:35px\"> <label for=\"input_short_descriptor\">Short descriptor: &nbsp </label> "
 		"<input style=\"font-size:35px\" name=\"input_short_descriptor\" maxlength=18 type=\"text\"> </p> "
 		"<p style=\"font-size:35px\"> <label for=\"input_long_descriptor\">Long descriptor: &nbsp </label> "
@@ -220,6 +223,7 @@ String handle_led_settings_request(AsyncWebServerRequest *request){
 	String artnet = "";
 	String dmx = "";
 	String numberLEDs = "";
+	String channelsPerUniverse = "";
 	String shortDesc = "";
 	String longDesc = "";
 	if(request->hasParam(LED_OUTPUT_INPUT))
@@ -233,13 +237,16 @@ String handle_led_settings_request(AsyncWebServerRequest *request){
 	if(request->hasParam(NUMBER_LEDS_INPUT)){
 		numberLEDs = request->getParam(NUMBER_LEDS_INPUT)->value();
 	}
+	if(request->hasParam(CHANNELS_PER_UNIVERSE_INPUT)){
+		channelsPerUniverse = request->getParam(CHANNELS_PER_UNIVERSE_INPUT)->value();
+	}
 	if(request->hasParam(SHORT_DESCRIPTOR_INPUT)){
 		shortDesc = request->getParam(SHORT_DESCRIPTOR_INPUT)->value();
 	}
 	if(request->hasParam(LONG_DESCRIPTOR_INPUT)){
 		longDesc = request->getParam(LONG_DESCRIPTOR_INPUT)->value();
 	}
-	return handle_led_settings_request(output, artnet, dmx, numberLEDs, shortDesc, longDesc);
+	return handle_led_settings_request(output, artnet, dmx, numberLEDs, channelsPerUniverse, shortDesc, longDesc);
 }
 
 String create_config_table_only(){
@@ -247,13 +254,15 @@ String create_config_table_only(){
 			"<h2>Current configuration</h2> "
 			"<table> "
 			"<tr> <th>Output</th> <th>ArtNet universe</th> <th>DMX address</th> "
-			"<th>Number LEDs</th> <th>Short descriptor</th> <th>Long descriptor</th> </tr> ";
+			"<th>Number LEDs</th> <th>Channels per Universe</th> "
+			"<th>Short descriptor</th> <th>Long descriptor</th> </tr> ";
 	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
 		html += "<tr> "
 				"<td> " + String(i) + "</td> " +
 				"<td> " + String(DataManager::getLedConfig(i)->startUniverse) + "</td> "
 				"<td> " + DataManager::getLedConfig(i)->startDmxAddress + "</td> "
 				"<td> " + DataManager::getLedConfig(i)->numberLEDs + "</td> "
+				"<td> " + DataManager::getLedConfig(i)->channelsPerUniverse + "</td> "
 				"<td> " + DataManager::getLedConfig(i)->shortName + "</td> "
 				"<td> " + DataManager::getLedConfig(i)->longName + "</td> "
 				"</tr> ";
@@ -271,6 +280,7 @@ String ethernet_server_handle_form(String getLine){
 	String artnet = "";
 	String dmx = "";
 	String leds = "";
+	String channels = "";
 	String shortdesc = "";
 	String longdesc = "";
 	//replace space after last parameter with a & sign for easier processing later on
@@ -341,6 +351,12 @@ String ethernet_server_handle_form(String getLine){
 		int endIndex = getLine.indexOf("&",startIndex);
 		leds = getLine.substring(startIndex, endIndex);
 	}
+	index = getLine.indexOf(CHANNELS_PER_UNIVERSE_INPUT);
+	if(index != -1){
+		int startIndex = index + String(CHANNELS_PER_UNIVERSE_INPUT).length()+1;
+		int endIndex = getLine.indexOf("&",startIndex);
+		channels = getLine.substring(startIndex, endIndex);
+	}
 	index = getLine.indexOf(SHORT_DESCRIPTOR_INPUT);
 	if(index != -1){
 		int startIndex = index + String(SHORT_DESCRIPTOR_INPUT).length()+1;
@@ -353,7 +369,7 @@ String ethernet_server_handle_form(String getLine){
 		int endIndex = getLine.indexOf("&",startIndex);
 		longdesc = getLine.substring(startIndex, endIndex);
 	}
-	return handle_led_settings_request(output, artnet, dmx, leds, shortdesc, longdesc);
+	return handle_led_settings_request(output, artnet, dmx, leds, channels, shortdesc, longdesc);
 }
 
 String handle_internet_settings_request(String ssid, String pw, String hostName, internetMode newMode, bool updateInternetMode){
@@ -377,7 +393,7 @@ String handle_internet_settings_request(String ssid, String pw, String hostName,
 	return reply;
 }
 
-String handle_led_settings_request(String output, String artnet, String dmx, String numberLEDs, String shortDesc, String longDesc){
+String handle_led_settings_request(String output, String artnet, String dmx, String numberLEDs, String channelsPerUniverse, String shortDesc, String longDesc){
 	if(output == NULL || output.equals(""))
 		return "Please enter an output to update from 0 to " + String(NUMBER_LED_OUTPUTS-1);
 	int outputVal = atoi(output.c_str());
@@ -394,6 +410,10 @@ String handle_led_settings_request(String output, String artnet, String dmx, Str
 		int data = atoi(numberLEDs.c_str());
 		reply += DataManager::setNumberLeds(outputVal, data) + " <br> ";
 	}
+	if(channelsPerUniverse != NULL && !channelsPerUniverse.equals("")){
+		int data = atoi(channelsPerUniverse.c_str());
+		reply += DataManager::setChannelsPerUniverse(outputVal, data) + " <br> ";
+	}
 	if(shortDesc != NULL && !shortDesc.equals("")){
 		shortDesc.replace("+", " ");
 		reply += DataManager::setShortName(outputVal, shortDesc) + " <br> ";
@@ -404,8 +424,4 @@ String handle_led_settings_request(String output, String artnet, String dmx, Str
 	}
 	return reply;
 }
-
-
-
-
 

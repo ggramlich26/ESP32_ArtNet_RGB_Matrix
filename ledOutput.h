@@ -15,6 +15,7 @@ typedef struct ledConfig_s{
 	uint16_t numberLEDs;
 	int startUniverse;
 	int startDmxAddress;
+	int channelsPerUniverse;
 	char shortName[MAX_ARTNET_SHORT_NAME_LEN];
 	char longName[MAX_ARTNET_LONG_NAME_LEN];
 } ledConfig_t;

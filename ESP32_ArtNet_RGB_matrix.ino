@@ -121,18 +121,20 @@ void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* d
 {
 	for(int i = 0; i < NUMBER_LED_OUTPUTS; i++){
 		uint16_t endUniverse = ledOutputs[i].config.startUniverse + (ledOutputs[i].config.startDmxAddress - 1 +
-				ledOutputs[i].config.numberLEDs*3)/512;
+				ledOutputs[i].config.numberLEDs*3)/(ledOutputs[i].config.channelsPerUniverse);
 		if(ledOutputs[i].config.startUniverse <= universe && endUniverse >= universe){
 			if(universe == ledOutputs[i].config.startUniverse){
 				for(uint16_t j = ledOutputs[i].config.startDmxAddress-1, k = 0;
-						j < length && k < ledOutputs[i].config.numberLEDs*3; j++, k++){
+						j < length && j < ledOutputs[i].config.channelsPerUniverse &&
+						k < ledOutputs[i].config.numberLEDs*3; j++, k++){
 					ledOutputs[i].data[k] = data[j];
 				}
 			}
 			else{
-				uint16_t startIndex = ((universe - ledOutputs[i].config.startUniverse)*512 -
-						(ledOutputs[i].config.startDmxAddress - 1));
-				for(uint16_t j = 0, k = startIndex; j < length && k < ledOutputs[i].config.numberLEDs*3; j++, k++){
+				uint16_t startIndex = ((universe - ledOutputs[i].config.startUniverse)*ledOutputs[i].config.channelsPerUniverse
+						- (ledOutputs[i].config.startDmxAddress - 1));
+				for(uint16_t j = 0, k = startIndex; j < length  && j < ledOutputs[i].config.channelsPerUniverse
+						&& k < ledOutputs[i].config.numberLEDs*3; j++, k++){
 					ledOutputs[i].data[k] = data[j];
 				}
 			}

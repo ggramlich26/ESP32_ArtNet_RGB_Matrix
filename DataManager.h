@@ -19,6 +19,7 @@ enum internetMode{wifiDHCP, ethernetDHCP, accesspoint};
 #define DEFAULT_ARTNET_UNIVERSE					0
 #define DEFAULT_DMX_ADDR						1
 #define DEFAULT_NUMBER_LEDS						120
+#define DEFAULT_CHANNELS_PER_UNIVERSE			510
 #define DEFAULT_SHORT_NAME						"Pixel controller"
 #define DEFAULT_LONG_NAME						"Pixel controller by Georg"
 
@@ -32,6 +33,7 @@ public:
 	static String setArtnetUniverse(int output, int universe);
 	static String setDMXAddress(int output, int address);
 	static String setNumberLeds(int output, int number);
+	static String setChannelsPerUniverse(int output, int channels);
 	static String setShortName(int output, String name);
 	static String setLongName(int output, String name);
 
